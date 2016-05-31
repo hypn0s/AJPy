@@ -1,6 +1,33 @@
 import struct
 from pprint import  pprint
 
+import logging
+from colorlog import ColoredFormatter
+
+def setup_logger():
+    """Return a logger with a default ColoredFormatter."""
+    formatter = ColoredFormatter(
+        "[%(asctime)s.%(msecs)03d] %(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
+        datefmt="%Y-%m-%d %H:%M:%S",
+        reset=True,
+        log_colors={
+            'DEBUG':    'bold_purple',
+            'INFO':     'bold_green',
+            'WARNING':  'bold_yellow',
+            'ERROR':    'bold_red',
+            'CRITICAL': 'bold_red',
+        }
+    )
+
+    logger = logging.getLogger('meow')
+    handler = logging.StreamHandler()
+    handler.setFormatter(formatter)
+    logger.addHandler(handler)
+    logger.setLevel(logging.DEBUG)
+
+    return logger
+
+logger = setup_logger()
 # Some references:
 # https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
@@ -24,6 +51,48 @@ def unpack_string(stream):
 	res, = unpack(stream, "%ds" % size)
 	stream.read(1) # \0
 	return res
+	
+class NotFoundException(Exception):
+	pass
+
+class AjpBodyRequest(object):
+	# server == web server, container == servlet
+	SERVER_TO_CONTAINER, CONTAINER_TO_SERVER = range(2)
+
+	def __init__(self, data_stream, data_len, data_direction=None):
+		self.data_stream = data_stream
+		self.data_len = data_len
+		self.data_direction = data_direction
+
+
+	def serialize(self):
+		data = self.data_stream.read(self.data_len)
+		print "read %d bytes" % len(data)
+		if len(data) == 0:
+			return struct.pack(">bbH", 0x12, 0x34, 0x00)
+		else:
+			res = ""
+			res += struct.pack(">H", len(data))
+			res += data
+
+		if self.data_direction == AjpBodyRequest.SERVER_TO_CONTAINER:
+			header = struct.pack(">bbH", 0x12, 0x34, len(res))
+		else:
+			header = struct.pack(">bbH", 0x41, 0x42, len(res))
+
+		return header + res
+
+
+	def send_and_receive(self, socket, stream):
+		while True:
+			data = self.serialize()
+			socket.send(data)
+			r = AjpResponse.receive(stream)
+			while r.prefix_code != AjpResponse.GET_BODY_CHUNK and r.prefix_code != AjpResponse.SEND_HEADERS:
+				r = AjpResponse.receive(stream)
+
+			if r.prefix_code == AjpResponse.SEND_HEADERS or len(data) == 4:
+				break
 
 class AjpForwardRequest(object):
 	"""
@@ -45,6 +114,8 @@ class AjpForwardRequest(object):
 	"""
 
 	_, OPTIONS, GET, HEAD, POST, PUT, DELETE, TRACE, PROPFIND, PROPPATCH, MKCOL, COPY, MOVE, LOCK, UNLOCK, ACL, REPORT, VERSION_CONTROL, CHECKIN, CHECKOUT, UNCHECKOUT, SEARCH, MKWORKSPACE, UPDATE, LABEL, MERGE, BASELINE_CONTROL, MKACTIVITY = range(28)
+
+	REQUEST_METHODS = {'GET': GET, 'POST': POST, 'HEAD': HEAD, 'OPTIONS': OPTIONS, 'PUT': PUT, 'DELETE': DELETE, 'TRACE': TRACE}
 
 	# server == web server, container == servlet
 	SERVER_TO_CONTAINER, CONTAINER_TO_SERVER = range(2)
@@ -195,6 +266,33 @@ class AjpForwardRequest(object):
 
 			self.request_headers[h_name] = h_value
 
+	def send_and_receive(self, socket, stream, save_cookies=False):
+		res = []
+		i = socket.sendall(self.serialize())
+		if self.method == AjpForwardRequest.POST:
+			return res
+
+		r = AjpResponse.receive(stream)
+		assert r.prefix_code == AjpResponse.SEND_HEADERS
+		res.append(r)
+
+		if save_cookies and 'Set-Cookie' in r.response_headers:
+			self.headers['SC_REQ_COOKIE'] = r.response_headers['Set-Cookie']
+
+		# read body chunks and end response packets
+		while True:
+			r = AjpResponse.receive(stream)
+			res.append(r)
+			if r.prefix_code == AjpResponse.END_RESPONSE:
+				break
+			elif r.prefix_code == AjpResponse.SEND_BODY_CHUNK:
+				continue
+			else:
+				logger.error("WTFError, unhandled prefix_code = %d" % r.prefix_code)
+				break
+
+		return res
+
 class AjpResponse(object):
 	"""
 		AJP13_SEND_BODY_CHUNK := 
@@ -237,9 +335,7 @@ class AjpResponse(object):
 
 	def parse(self, stream):
 		# read headers
-		self.magic_1, self.magic_2, self.data_length = unpack(stream, ">bbH")
-
-		self.prefix_code, = unpack(stream, "b")
+		self.magic, self.data_length, self.prefix_code = unpack(stream, ">HHb")
 
 		if self.prefix_code == AjpResponse.SEND_HEADERS:
 			self.parse_send_headers(stream)
@@ -250,6 +346,7 @@ class AjpResponse(object):
 		elif self.prefix_code == AjpResponse.GET_BODY_CHUNK:
 			self.parse_get_body_chunk(stream)
 		else:
+			logger.critical("Unsupported response code = %d" % self.prefix_code)
 			raise NotImplementedError
 
 	def parse_send_headers(self, stream):
@@ -269,12 +366,18 @@ class AjpResponse(object):
 			self.response_headers[h_name] = h_value
 
 	def parse_send_body_chunk(self, stream):
-		self.data = stream.read(self.data_length-1)
+		self.data_length, = unpack(stream, ">H")
+		self.data = stream.read(self.data_length+1)
 
 	def parse_end_response(self, stream):
 		self.reuse, = unpack(stream, "b")
 
 	def parse_get_body_chunk(self, stream):
-		return
+		rlen, = unpack(stream, ">H")
+		return rlen
 
-
+	@staticmethod
+	def receive(stream):
+		r = AjpResponse()
+		r.parse(stream)
+		return r

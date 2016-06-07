@@ -105,7 +105,7 @@ class Tomcat(object):
 	def perform_request(self, req_uri, headers={}, method='GET', user=None, password=None, attributes=[]):
 		self.req_uri = req_uri
 		self.forward_request = prepare_ajp_forware_request(self.target_host, self.target_port, self.req_uri, method=AjpForwardRequest.REQUEST_METHODS.get(method))
-		logger.info("Getting resource at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
+		logger.debug("Getting resource at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
 		if user is not None and password is not None:
 			self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + ("%s:%s" % (user, password)).encode('base64').replace('\n', '')
 
@@ -170,6 +170,15 @@ class Tomcat(object):
 			r = AjpResponse.receive(self.stream)
 
 
+	def get_error_page(self):
+		return self.perform_request("/blablablablabla")
+
+	def get_version(self):
+		hdrs, data = self.get_error_page()
+		for d in data:
+			s = re.findall('(Apache Tomcat/[0-9\.]+) ', d.data)
+			if len(s) > 0:
+				return s[0]
 		
 
 if __name__ == "__main__":
@@ -198,7 +207,11 @@ if __name__ == "__main__":
 	parser_upload.add_argument("-p", "--password", type=str, default=None, help="Password")
 	parser_upload.add_argument("-H", "--headers", type=str, default={}, help="Custom headers")
 
+	parser_version = subparsers.add_parser('version', help='Get version')
+	parser_version.set_defaults(which='version')
+
 	args = parser.parse_args()
+
 
 	if args.verbose == 1:
 		logger.setLevel(logging.INFO)
@@ -212,3 +225,5 @@ if __name__ == "__main__":
 #		print bf.perform_request(args.req_uri, args.headers, args.method, args.user, args.password)
 	elif args.which == 'upload':
 		bf.upload(args.filename, args.user, args.password, args.headers)
+	elif args.which == 'version':	
+		print bf.get_version()

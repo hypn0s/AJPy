@@ -1,0 +1,8 @@
+site_name: AJPy
+pages:
+    - Introductoin: index.md
+    - AJP overview: ajp.md
+    - AJPy core: ajpy_core.md
+    - AJPy tools: ajpy_tools.md
+    - Credits: credits.md
+theme: readthedocs

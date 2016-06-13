@@ -167,8 +167,7 @@ class Tomcat(object):
 				"SC_REQ_CONTENT_TYPE": "multipart/form-data; boundary=----WebKitFormBoundaryb2qpuwMoVtQJENti",
 				"SC_REQ_CONTENT_LENGTH": "%d" % data_len,
 				"SC_REQ_COOKIE": re.findall("(JSESSIONID=[0-9A-F]*); Path=/manager/; HttpOnly", hdrs.response_headers.get('Set-Cookie', ''))[0],
-#				"SC_REQ_REFERER": "http://%s/manager/html/" % (self.target_host),
-				"SC_REQ_REFERER": "http://172.17.0.3/manager/html/list",
+				"SC_REQ_REFERER": "http://%s/manager/html/" % (self.target_host),
 				"Origin": "http://%s" % (self.target_host),
 		}
 

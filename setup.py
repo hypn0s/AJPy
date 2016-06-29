@@ -12,7 +12,7 @@ setup(
     keywords = ["ajp", "java", "network"],
     classifiers = [
         "Programming Language :: Python",
-        "Development Status :: 1 - Alpha",
+        "Development Status :: 3 - Alpha",
         "Environment :: Other Environment",
         "Intended Audience :: Developers",
         "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",

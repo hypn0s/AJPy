@@ -12,35 +12,7 @@
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
 import struct
-from pprint import  pprint
 
-import logging
-from colorlog import ColoredFormatter
-
-def setup_logger():
-    """Return a logger with a default ColoredFormatter."""
-    formatter = ColoredFormatter(
-        "[%(asctime)s.%(msecs)03d] %(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        reset=True,
-        log_colors={
-            'DEBUG':    'bold_purple',
-            'INFO':     'bold_green',
-            'WARNING':  'bold_yellow',
-            'ERROR':    'bold_red',
-            'CRITICAL': 'bold_red',
-        }
-    )
-
-    logger = logging.getLogger('meow')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
-
-    return logger
-
-logger = setup_logger()
 # Some references:
 # https://tomcat.apache.org/connectors-doc/ajp/ajpv13a.html
 
@@ -301,7 +273,7 @@ class AjpForwardRequest(object):
 			elif r.prefix_code == AjpResponse.SEND_BODY_CHUNK:
 				continue
 			else:
-				logger.error("WTFError, unhandled prefix_code = %d" % r.prefix_code)
+				raise NotImplementedError
 				break
 
 		return res
@@ -359,7 +331,6 @@ class AjpResponse(object):
 		elif self.prefix_code == AjpResponse.GET_BODY_CHUNK:
 			self.parse_get_body_chunk(stream)
 		else:
-			logger.critical("Unsupported response code = %d" % self.prefix_code)
 			raise NotImplementedError
 
 	def parse_send_headers(self, stream):

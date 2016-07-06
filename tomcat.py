@@ -110,7 +110,7 @@ class Tomcat(object):
 				stop = True
 				if 'Set-Cookie' in snd_hdrs_res.response_headers:
 					logger.info("Here is your cookie: %s" % (snd_hdrs_res.response_headers.get('Set-Cookie', '')))
-			elif snd_hdrs_res.http_status_code == 401:
+			elif snd_hdrs_res.http_status_code in (401, 403):
 				stop = True
 
 		return res

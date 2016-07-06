@@ -110,6 +110,9 @@ class Tomcat(object):
 				stop = True
 				if 'Set-Cookie' in snd_hdrs_res.response_headers:
 					logger.info("Here is your cookie: %s" % (snd_hdrs_res.response_headers.get('Set-Cookie', '')))
+			elif snd_hdrs_res.http_status_code == 403:
+				logger.info("Found valid credz: %s:%s but the user is not authorized to access this resource" % (user, password))
+				stop = True
 			elif snd_hdrs_res.http_status_code == 401:
 				stop = True
 

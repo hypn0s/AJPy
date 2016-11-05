@@ -52,7 +52,6 @@ class AjpBodyRequest(object):
 
 	def serialize(self):
 		data = self.data_stream.read(self.data_len)
-		print "read %d bytes" % len(data)
 		if len(data) == 0:
 			return struct.pack(">bbH", 0x12, 0x34, 0x00)
 		else:

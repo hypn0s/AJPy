@@ -207,7 +207,7 @@ class Tomcat(object):
 		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")}, {"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "12345")}]
 		if old_version == False:
                     attributes.append({"name": "query_string", "value": deploy_csrf_token[0]})
-		r = self.perform_request("/manager/html/deploy", headers=headers, method="POST", user=user, password=password, attributes=attributes)
+		r = self.perform_request("/manager/html/upload", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 
 		with open("/tmp/request", "rb") as f:
 			br = AjpBodyRequest(f, 8186, AjpBodyRequest.SERVER_TO_CONTAINER)

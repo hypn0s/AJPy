@@ -26,27 +26,27 @@ import logging
 from colorlog import ColoredFormatter
 
 def setup_logger():
-    """Return a logger with a default ColoredFormatter."""
-    formatter = ColoredFormatter(
-        "[%(asctime)s.%(msecs)03d] %(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
-        datefmt="%Y-%m-%d %H:%M:%S",
-        reset=True,
-        log_colors={
-            'DEBUG':    'bold_purple',
-            'INFO':     'bold_green',
-            'WARNING':  'bold_yellow',
-            'ERROR':    'bold_red',
-            'CRITICAL': 'bold_red',
-        }
-    )
+	"""Return a logger with a default ColoredFormatter."""
+	formatter = ColoredFormatter(
+		"[%(asctime)s.%(msecs)03d] %(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
+		datefmt="%Y-%m-%d %H:%M:%S",
+		reset=True,
+		log_colors={
+			'DEBUG':	'bold_purple',
+			'INFO':	 'bold_green',
+			'WARNING':  'bold_yellow',
+			'ERROR':	'bold_red',
+			'CRITICAL': 'bold_red',
+		}
+	)
 
-    logger = logging.getLogger('meow')
-    handler = logging.StreamHandler()
-    handler.setFormatter(formatter)
-    logger.addHandler(handler)
-    logger.setLevel(logging.DEBUG)
+	logger = logging.getLogger('meow')
+	handler = logging.StreamHandler()
+	handler.setFormatter(formatter)
+	logger.addHandler(handler)
+	logger.setLevel(logging.DEBUG)
 
-    return logger
+	return logger
 
 logger = setup_logger()
 
@@ -206,18 +206,20 @@ class Tomcat(object):
 
 		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")}, {"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "12345")}]
 		if old_version == False:
-                    attributes.append({"name": "query_string", "value": deploy_csrf_token[0]})
+			attributes.append({"name": "query_string", "value": deploy_csrf_token[0]})
 		r = self.perform_request("/manager/html/upload", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 
 		with open("/tmp/request", "rb") as f:
-			br = AjpBodyRequest(f, 8186, AjpBodyRequest.SERVER_TO_CONTAINER)
+			br = AjpBodyRequest(f, data_len, AjpBodyRequest.SERVER_TO_CONTAINER)
 			br.send_and_receive(self.socket, self.stream)
 
 		r = AjpResponse.receive(self.stream)
+		if r.prefix_code == AjpResponse.END_RESPONSE:
+			logger.error('Upload failed')
+
 		while r.prefix_code != AjpResponse.END_RESPONSE:
-			if r.prefix_code == AjpResponse.SEND_BODY_CHUNK:
-				print r.data
 			r = AjpResponse.receive(self.stream)
+		logger.info('Upload success!')
 
 
 	def get_error_page(self):

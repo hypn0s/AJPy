@@ -172,15 +172,16 @@ class Tomcat(object):
 
 		return snd_hdrs_res, data_res
 
-	def upload(self, filename, user, password, headers={}):
+	def upload(self, filename, user, password, old_version, headers={}):
 		# first we request the manager page to get the CSRF token 
 		hdrs, rdata = self.perform_request("/manager/html", headers=headers, user=user, password=password)
 		deploy_csrf_token = re.findall('(org.apache.catalina.filters.CSRF_NONCE=[0-9A-F]*)"', "".join([d.data for d in rdata]))
-		if len(deploy_csrf_token) == 0:
-			logger.critical("Failed to get CSRF token. Check the credentials")
-			return
+		if old_version == False:
+			if len(deploy_csrf_token) == 0:
+				logger.critical("Failed to get CSRF token. Check the credentials")
+				return
 
-		logger.debug('CSRF token = %s' % deploy_csrf_token[0])
+			logger.debug('CSRF token = %s' % deploy_csrf_token[0])
 
 
 		with open(filename, "rb") as f_input:
@@ -196,12 +197,17 @@ class Tomcat(object):
 		headers = {
 				"SC_REQ_CONTENT_TYPE": "multipart/form-data; boundary=----WebKitFormBoundaryb2qpuwMoVtQJENti",
 				"SC_REQ_CONTENT_LENGTH": "%d" % data_len,
-				"SC_REQ_COOKIE": re.findall("(JSESSIONID=[0-9A-F]*); Path=/manager/; HttpOnly", hdrs.response_headers.get('Set-Cookie', ''))[0],
 				"SC_REQ_REFERER": "http://%s/manager/html/" % (self.target_host),
 				"Origin": "http://%s" % (self.target_host),
 		}
+		obj = re.match("(?P<cookie>JSESSIONID=[0-9A-F]*); Path=/manager(/)?; HttpOnly", hdrs.response_headers.get('Set-Cookie', ''))
+		if obj is not None:
+			headers["SC_REQ_COOKIE"] = obj.group('cookie')
 
-		r = self.perform_request("/manager/html/deploy", headers=headers, method="POST", user=user, password=password, attributes=[{"name": "query_string", "value": deploy_csrf_token[0]}, {"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")}, {"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "12345")}])
+		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")}, {"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "12345")}]
+		if old_version == False:
+                    attributes.append({"name": "query_string", "value": deploy_csrf_token[0]})
+		r = self.perform_request("/manager/html/upload", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 
 		with open("/tmp/request", "rb") as f:
 			br = AjpBodyRequest(f, 8186, AjpBodyRequest.SERVER_TO_CONTAINER)
@@ -250,6 +256,7 @@ if __name__ == "__main__":
 	parser_upload.add_argument("-u", "--user", type=str, default=None, help="Username")
 	parser_upload.add_argument("-p", "--password", type=str, default=None, help="Password")
 	parser_upload.add_argument("-H", "--headers", type=str, default={}, help="Custom headers")
+	parser_upload.add_argument("--old-version", action='store_true', default=False, help="Old version of Tomcat that does not implement anti-CSRF token")
 
 	parser_version = subparsers.add_parser('version', help='Get version')
 	parser_version.set_defaults(which='version')
@@ -268,6 +275,6 @@ if __name__ == "__main__":
 #	elif args.which == 'req':
 #		print bf.perform_request(args.req_uri, args.headers, args.method, args.user, args.password)
 	elif args.which == 'upload':
-		bf.upload(args.filename, args.user, args.password, args.headers)
+		bf.upload(args.filename, args.user, args.password, args.old_version, args.headers)
 	elif args.which == 'version':	
 		print bf.get_version()

@@ -43,6 +43,7 @@ class NotFoundException(Exception):
 class AjpBodyRequest(object):
 	# server == web server, container == servlet
 	SERVER_TO_CONTAINER, CONTAINER_TO_SERVER = range(2)
+	MAX_REQUEST_LENGTH = 8186
 
 	def __init__(self, data_stream, data_len, data_direction=None):
 		self.data_stream = data_stream
@@ -51,7 +52,7 @@ class AjpBodyRequest(object):
 
 
 	def serialize(self):
-		data = self.data_stream.read(self.data_len)
+		data = self.data_stream.read(AjpBodyRequest.MAX_REQUEST_LENGTH)
 		if len(data) == 0:
 			return struct.pack(">bbH", 0x12, 0x34, 0x00)
 		else:

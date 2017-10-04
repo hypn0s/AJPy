@@ -231,7 +231,44 @@ class Tomcat(object):
 			s = re.findall('(Apache Tomcat/[0-9\.]+) ', d.data)
 			if len(s) > 0:
 				return s[0]
-		
+
+	def undeploy(self, path, user, password, old_version, headers={}):
+		# first we request the manager page to get the CSRF token
+		hdrs, rdata = self.perform_request("/manager/html", headers=headers, user=user, password=password)
+		deploy_csrf_token = re.findall('(org.apache.catalina.filters.CSRF_NONCE=[0-9A-F]*)"', "".join([d.data for d in rdata]))
+		if old_version == False:
+			if len(deploy_csrf_token) == 0:
+				logger.critical("Failed to get CSRF token. Check the credentials")
+				return
+
+			logger.debug('CSRF token = %s' % deploy_csrf_token[0])
+
+		headers = {
+				"SC_REQ_CONTENT_TYPE": "application/x-www-form-urlencoded",
+				"SC_REQ_CONTENT_LENGTH": "0",
+				"SC_REQ_REFERER": "http://%s/manager/html/" % (self.target_host),
+				"Origin": "http://%s" % (self.target_host),
+		}
+		obj = re.match("(?P<cookie>JSESSIONID=[0-9A-F]*); Path=/manager(/)?; HttpOnly", hdrs.response_headers.get('Set-Cookie', ''))
+		if obj is not None:
+			headers["SC_REQ_COOKIE"] = obj.group('cookie')
+
+		path_app = "path=%s" % path
+		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")},
+			{"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "{}".format(self.socket.getsockname()[1]))}]
+		if old_version == False:
+			attributes.append({
+                            "name": "query_string", "value": "%s&%s" % (path_app, deploy_csrf_token[0])})
+		r = self.perform_request("/manager/html/undeploy", headers=headers, method="POST", user=user, password=password, attributes=attributes)
+
+		r = AjpResponse.receive(self.stream)
+		if r.prefix_code == AjpResponse.END_RESPONSE:
+			logger.error('Undeploy failed')
+
+		while r.prefix_code != AjpResponse.END_RESPONSE:
+			r = AjpResponse.receive(self.stream)
+		logger.info('Undeploy success!')
+
 
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser()
@@ -260,6 +297,14 @@ if __name__ == "__main__":
 	parser_upload.add_argument("-H", "--headers", type=str, default={}, help="Custom headers")
 	parser_upload.add_argument("--old-version", action='store_true', default=False, help="Old version of Tomcat that does not implement anti-CSRF token")
 
+	parser_upload = subparsers.add_parser('undeploy', help='Undeploy WAR')
+	parser_upload.set_defaults(which='undeploy')
+	parser_upload.add_argument("path", type=str, help="Installed WAR path")
+	parser_upload.add_argument("-u", "--user", type=str, default=None, help="Username")
+	parser_upload.add_argument("-p", "--password", type=str, default=None, help="Password")
+	parser_upload.add_argument("-H", "--headers", type=str, default={}, help="Custom headers")
+	parser_upload.add_argument("--old-version", action='store_true', default=False, help="Old version of Tomcat that does not implement anti-CSRF token")
+
 	parser_version = subparsers.add_parser('version', help='Get version')
 	parser_version.set_defaults(which='version')
 
@@ -280,3 +325,5 @@ if __name__ == "__main__":
 		bf.upload(args.filename, args.user, args.password, args.old_version, args.headers)
 	elif args.which == 'version':	
 		print bf.get_version()
+	elif args.which == 'undeploy':
+		bf.undeploy(args.path, args.user, args.password, args.old_version, args.headers)

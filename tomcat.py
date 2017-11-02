@@ -288,7 +288,7 @@ class Tomcat(object):
 		r = self.perform_request("/manager/html/undeploy", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 		r = AjpResponse.receive(self.stream)
 		if r.prefix_code == AjpResponse.END_RESPONSE:
-			logger.error('Upload failed')
+			logger.error('Undeploy failed')
 
 		# Check the successful message
 		found = False

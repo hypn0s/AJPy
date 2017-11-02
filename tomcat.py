@@ -257,14 +257,14 @@ class Tomcat(object):
 		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")},
 			{"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "{}".format(self.socket.getsockname()[1]))}]
 		if old_version == False:
-			    attributes.append({
+				attributes.append({
 				"name": "query_string", "value": "%s" % deploy_csrf_token})
 		hdrs, data = self.perform_request("/manager/html/", headers=headers, method="GET", user=user, password=password, attributes=attributes)
 		found = []
 		for d in data:
-		    im = re.findall('/manager/html/expire\?path=([^&]*)&', d.data)
-		    for app in im:
-			found.append(unquote(app))
+			im = re.findall('/manager/html/expire\?path=([^&]*)&', d.data)
+			for app in im:
+				found.append(unquote(app))
 		return found
 
 
@@ -283,7 +283,7 @@ class Tomcat(object):
 		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")},
 			{"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "{}".format(self.socket.getsockname()[1]))}]
 		if old_version == False:
-			    attributes.append({
+				attributes.append({
 				"name": "query_string", "value": "%s&%s" % (path_app, deploy_csrf_token)})
 		r = self.perform_request("/manager/html/undeploy", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 		r = AjpResponse.receive(self.stream)

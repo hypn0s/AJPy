@@ -197,6 +197,7 @@ class Tomcat(object):
 		attributes = [{"name": "req_attribute", "value": ("JK_LB_ACTIVATION", "ACT")}, {"name": "req_attribute", "value": ("AJP_REMOTE_PORT", "12345")}]
 		if old_version == False:
 			attributes.append({"name": "query_string", "value": deploy_csrf_token})
+		old_apps = self.list_installed_applications(user, password, old_version)
 		r = self.perform_request("/manager/html/upload", headers=headers, method="POST", user=user, password=password, attributes=attributes)
 
 		with open("/tmp/request", "rb") as f:
@@ -210,9 +211,8 @@ class Tomcat(object):
 		while r.prefix_code != AjpResponse.END_RESPONSE:
 			r = AjpResponse.receive(self.stream)
 		logger.debug('Upload seems normal. Checking...')
-		# since Tomcat only respond "OK", we are not sure if application is well deployed
-		# How to know the path of installed application (make a diff) ?
-		if '/jsp_app' in self.list_installed_applications(user, password, old_version):
+		new_apps = self.list_installed_applications(user, password, old_version)
+		if len(new_apps) == len(old_apps) + 1 and new_apps[:-1] == old_apps:
 			logger.info('Upload success!')
 		else:
 			logger.error('Upload failed')

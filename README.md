@@ -61,6 +61,17 @@ $ python tomcat.py -v  bf -U tomcat_mgr_default_users.txt -P tomcat_mgr_default_
 $ python tomcat.py upload -u tomcat -p tomcat webshell.war 172.17.0.2
 ```
 
+* WAR undeploy
+```
+$ python tomcat.py undeploy -u tomcat -p tomcat /webshell 172.17.0.2
+```
+
+* Application listing
+```
+$ python tomcat.py list -u tomcat -p tomcat 172.17.0.2
+```
+
+
 # Thanks
 * @MrTchuss for the Tomcat WAR upload fix
 * @kalidor for the Tomcat WAR undeploy and application listing

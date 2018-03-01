@@ -63,3 +63,4 @@ $ python tomcat.py upload -u tomcat -p tomcat webshell.war 172.17.0.2
 
 # Thanks
 * @MrTchuss for the Tomcat WAR upload fix
+* @kalidor for the Tomcat WAR undeploy and application listing

@@ -3,7 +3,7 @@ from setuptools import setup
 setup(
     name = "ajpy",
     packages = ["ajpy"],
-    version = "0.0.1",
+    version = "0.0.3",
     description = "AJP package crafting library",
     author = "Julien Legras",
     author_email = "julien.legras@synacktiv.com",

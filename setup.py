@@ -15,7 +15,7 @@ setup(
         "Development Status :: 3 - Alpha",
         "Environment :: Other Environment",
         "Intended Audience :: Developers",
-        "License :: OSI Approved :: GNU Library or Lesser General Public License (LGPL)",
+        "License :: OSI Approved :: BSD License",
         "Operating System :: POSIX",
         "Topic :: Software Development :: Libraries :: Python Modules",
         "Topic :: Security",

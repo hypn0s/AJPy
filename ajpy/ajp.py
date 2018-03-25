@@ -37,7 +37,7 @@ def pack_string(s):
 		return struct.pack(">h", -1)
 
 	l = len(s)
-	return struct.pack(">H%dsb" % l, l, s, 0)
+	return struct.pack(">H%dsb" % l, l, s.encode('utf8'), 0)
 
 def unpack(stream, fmt):
 	size = struct.calcsize(fmt)
@@ -71,8 +71,7 @@ class AjpBodyRequest(object):
 		if len(data) == 0:
 			return struct.pack(">bbH", 0x12, 0x34, 0x00)
 		else:
-			res = ""
-			res += struct.pack(">H", len(data))
+			res = struct.pack(">H", len(data))
 			res += data
 
 		if self.data_direction == AjpBodyRequest.SERVER_TO_CONTAINER:
@@ -172,7 +171,7 @@ class AjpForwardRequest(object):
 		self.num_headers = len(self.request_headers)
 
 		res = ""
-		res += struct.pack(">h", self.num_headers)
+		res = struct.pack(">h", self.num_headers)
 		for h_name in self.request_headers:
 			if h_name.startswith("SC_REQ"):
 				code = AjpForwardRequest.COMMON_HEADERS.index(h_name) + 1
@@ -203,7 +202,7 @@ class AjpForwardRequest(object):
 			are_done	0xFF	request_terminator
 		"""
 
-		res = ""
+		res = b""
 
 		for attr in self.attributes:
 			a_name = attr['name']
@@ -222,7 +221,7 @@ class AjpForwardRequest(object):
 	def serialize(self):
 		res = ""
 
-		res += struct.pack("bb", self.prefix_code, self.method)
+		res = struct.pack("bb", self.prefix_code, self.method)
 		res += pack_string(self.protocol)
 		res += pack_string(self.req_uri)
 		res += pack_string(self.remote_addr)

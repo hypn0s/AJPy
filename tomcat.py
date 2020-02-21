@@ -211,7 +211,7 @@ class Tomcat(object):
 	def get_version(self):
 		hdrs, data = self.get_error_page()
 		for d in data:
-			s = re.findall('(Apache Tomcat/[0-9\.]+) ', d.data.decode('utf-8'))
+			s = re.findall('(Apache Tomcat/[0-9\.]+)', d.data.decode('utf-8'))
 			if len(s) > 0:
 				return s[0]
 

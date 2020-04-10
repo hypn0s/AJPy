@@ -9,6 +9,7 @@ setup(
     author_email = "julien.legras@synacktiv.com",
     url = "https://github.com/hypn0s/AJPy/",
     download_url = "https://github.com/hypn0s/AJPy/archive/master.zip",
+    license = "BSD",
     keywords = ["ajp", "java", "network"],
     classifiers = [
         "Programming Language :: Python",

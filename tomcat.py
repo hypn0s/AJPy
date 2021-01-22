@@ -82,7 +82,8 @@ class Tomcat(object):
 	def test_password(self, user, password):
 		res = False
 		stop = False
-		self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + b64encode("%s:%s" % (user, password)).replace('\n', '')
+		creds = b64encode(("%s:%s" % (user, password)).encode('utf-8')).decode('utf-8')
+		self.forward_request.request_headers['SC_REQ_AUTHORIZATION'] = "Basic " + creds
 		while not stop:
 			logger.debug("testing %s:%s" % (user, password))
 			responses = self.forward_request.send_and_receive(self.socket, self.stream)

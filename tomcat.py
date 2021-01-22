@@ -202,7 +202,7 @@ class Tomcat(object):
 			r = AjpResponse.receive(self.stream)
 		logger.debug('Upload seems normal. Checking...')
 		new_apps = self.list_installed_applications(user, password, old_version)
-		if len(new_apps) == len(old_apps) + 1 and new_apps[:-1] == old_apps:
+		if len(new_apps) == len(old_apps) + 1:
 			logger.info('Upload success!')
 		else:
 			logger.error('Upload failed')
@@ -252,7 +252,7 @@ class Tomcat(object):
 		hdrs, data = self.perform_request("/manager/html/", headers=headers, method="GET", user=user, password=password, attributes=attributes)
 		found = []
 		for d in data:
-			im = re.findall('/manager/html/expire\?path=([^&]*)&', d.data.decode('utf8'))
+			im = re.findall('<small><a href="([^";]*)">', d.data.decode('utf8'))
 			for app in im:
 				found.append(unquote(app))
 		return found

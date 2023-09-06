@@ -196,16 +196,14 @@ class Tomcat(object):
 
 		r = AjpResponse.receive(self.stream)
 		if r.prefix_code == AjpResponse.END_RESPONSE:
-			logger.error('Upload failed')
-
-		while r.prefix_code != AjpResponse.END_RESPONSE:
-			r = AjpResponse.receive(self.stream)
-		logger.debug('Upload seems normal. Checking...')
-		new_apps = self.list_installed_applications(user, password, old_version)
-		if len(new_apps) == len(old_apps) + 1:
-			logger.info('Upload success!')
+			logger.info('Upload failed')
 		else:
-			logger.error('Upload failed')
+			regex = r'<small><strong>Message:<\/strong><\/small>&nbsp;<\/td>\s*<td class="row-left"><pre>(.*?)<\/pre><\/td>'
+			f = re.findall(regex, r.data.decode('utf-8'))
+			if "OK" in f:
+				logger.info('Upload sucess!')
+			else:
+				logger.error(f'Upload failed, reason: {f[0]}')
 
 	def get_error_page(self):
 		return self.perform_request("/blablablablabla")
